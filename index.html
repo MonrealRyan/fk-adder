@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Fk-adder by ajcastro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Fk-adder</h1>
+      <h2 class="project-tagline">Lets you add foreign keys in a swift! Foreign key adder in laravel migration.</h2>
+      <a href="https://github.com/ajcastro/fk-adder" class="btn">View on GitHub</a>
+      <a href="https://github.com/ajcastro/fk-adder/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/ajcastro/fk-adder/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h3>
+<a id="fkadder-for-laravel-migration" class="anchor" href="#fkadder-for-laravel-migration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>FkAdder for Laravel Migration</h3>
+
+<p>Lets you add foreign keys in a swift! Foreign key adder for laravel migration. Tested only in laravel version <code>4.2.11</code>.</p>
+
+<p>The purpose of <code>FkAdder</code> is to simplify declaration of foreign key columns in migration.</p>
+
+<p><strong>Things that <code>FkAdder</code> do for you:</strong></p>
+
+<ul>
+<li>  <strong>Remembers the data type of a foreign key</strong>, and it will provide the correct data type for you, so that you don't have to recall the data type of foreign key column
+  whenever you need that certain foreign key.</li>
+<li>  <strong>Lets you create migration tables in any order</strong>. This solves the problem when your table is created prior than the reference table.</li>
+</ul>
+
+<h4>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h4>
+
+<p><code>composer require ajcastro/fk-adder</code></p>
+
+<h4>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Configuration</h4>
+
+<p>Create a config file named <code>app/config/fk_adder.php</code></p>
+
+<pre><code>&lt;?php
+
+return [
+    'fk_namespace' =&gt; 'Your\Fk\Namespace',
+    'fk_datatypes_path' =&gt; app_path('database/foreign_keys/fk_datatypes.php')
+];
+</code></pre>
+
+<h4>
+<a id="setup" class="anchor" href="#setup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Setup</h4>
+
+<p>Setup your foreign keys.</p>
+
+<p>Create classes of foreign keys declaration inside your <code>fk_namespace</code>.</p>
+
+<p><strong>Naming Convention</strong></p>
+
+<p>If the foreign key is e.g. <code>user_id</code>, then the class name should be <code>UserId</code>.</p>
+
+<p>Example:</p>
+
+<pre><code>&lt;?php
+
+namespace Your\Fk\Namespace;
+
+use FkAdder\BaseFk;
+
+class UserId extends BaseFk
+{
+    protected $referenceTable = 'users';
+
+    public function createFkColumn($column)
+    {
+        return $this-&gt;table-&gt;unsignedInteger($column);
+    } 
+}
+
+</code></pre>
+
+<p>If your foreign key declaration is so simple as it just needs the datatype declaration you can use your <code>fk_datatypes_path</code>.</p>
+
+<pre><code>&lt;?php
+
+/*
+ * Fk datatypes. Registry of datatypes per fk, if ever createFkColumn is as simple as a datatype declaration.
+ * For simple fk datatype column creation.
+ */
+return [
+    'user_id' =&gt; 'unsignedInteger'
+];
+</code></pre>
+
+<h4>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h4>
+
+<p><strong>Sample</strong>:</p>
+
+<pre><code>Schema::create('users', function(Blueprint $table) {
+    $table-&gt;increments('id');
+    Fk::make($table)-&gt;add('user_group_id')-&gt;nullable()-&gt;comment('User group of the user');
+});
+</code></pre>
+
+<p>Create your migration and<br>
+Name your migration filename like <code>3000_03_01_094045_add_foreign_keys_to_all_table.php</code> 
+to make sure it will be the last migration to be executed.</p>
+
+<p><strong>Migration Template</strong></p>
+
+<pre><code>&lt;?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+
+class AddForeignKeysToAllTable extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        // IMPORTANT NOTE: Make sure this is the last migration being called.
+        // Execute creation of foreign keys by all migrations which use Fk. \m/ :).
+        foreach (Fk::$foreignKeys as $foreignKey) {
+            Schema::table($foreignKey['table'], function (Blueprint $table) use ($foreignKey) {
+                $table-&gt;foreign($foreignKey['column'], $foreignKey['key_name'])
+                -&gt;references($foreignKey['primary_key'])
+                -&gt;on($foreignKey['reference_table'])
+                -&gt;onDelete($foreignKey['on_delete'])
+                -&gt;onUpdate($foreignKey['on_update']);
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+    }
+}
+
+</code></pre>
+
+<h4>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h4>
+
+<p>Released under MIT License.</p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/ajcastro/fk-adder">Fk-adder</a> is maintained by <a href="https://github.com/ajcastro">ajcastro</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
